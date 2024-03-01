@@ -1,14 +1,21 @@
-#include "TFT_eSPI.h" // Include the graphics library (needs to be installed)
-
-TFT_eSPI tft = TFT_eSPI();  // Create a display object
+#include "TFT_eSPI.h"
+#include <Wire.h> // Needed for I2C to enable Serial Monitor
+TFT_eSPI tft = TFT_eSPI();  
 
 enum Screen {
   CLASS_TYPE,
   STUDENT_NUMBER,
   CLASS_TIME,
   DAY_OF_WEEK,
-  SCREEN_COUNT // Helper to keep track of the total number of screens
+  SCREEN_COUNT 
 };
+
+struct Selections {
+  String classType;
+  int studentNumber;
+  String classTime;
+  String weekDay;
+} selections;
 
 Screen currentScreen = CLASS_TYPE;
 Screen previousScreen = currentScreen;
@@ -35,18 +42,20 @@ const int numWeekDays = sizeof(weekDays) / sizeof(weekDays[0]);
 
 void setup() {
   tft.begin();
-  tft.setRotation(3); // Adjust rotation according to your display setup
+  tft.setRotation(3); 
   tft.fillScreen(TFT_BLACK);
   pinMode(WIO_5S_UP, INPUT_PULLUP);
   pinMode(WIO_5S_DOWN, INPUT_PULLUP);
   pinMode(WIO_5S_LEFT, INPUT_PULLUP);
   pinMode(WIO_5S_RIGHT, INPUT_PULLUP);
   pinMode(WIO_5S_PRESS, INPUT_PULLUP);
+  Serial.begin(9600); // Initialize serial communication
+  while (!Serial);    // Wait until Serial is ready
 }
 
 void loop() {
   static unsigned long lastPress = 0;
-  if (millis() - lastPress > 200) { // Basic debounce
+  if (millis() - lastPress > 200) {
     if (digitalRead(WIO_5S_RIGHT) == LOW) {
       currentScreen = static_cast<Screen>((currentScreen + 1) % SCREEN_COUNT);
       lastPress = millis();
@@ -68,7 +77,6 @@ void loop() {
       classTimeIndex != previousClassTimeIndex ||
       weekDayIndex != previousWeekDayIndex) {
     updateScreen();
-
     previousScreen = currentScreen;
     previousClassTypeIndex = classTypeIndex;
     previousStudentNumberIndex = studentNumberIndex;
@@ -81,15 +89,19 @@ void incrementIndex(int delta) {
   switch (currentScreen) {
     case CLASS_TYPE:
       classTypeIndex = (classTypeIndex + delta + numClassTypes) % numClassTypes;
+      selections.classType = classTypes[classTypeIndex];
       break;
     case STUDENT_NUMBER:
       studentNumberIndex = (studentNumberIndex + delta + numStudentNumbers) % numStudentNumbers;
+      selections.studentNumber = atoi(studentNumbers[studentNumberIndex]);
       break;
     case CLASS_TIME:
       classTimeIndex = (classTimeIndex + delta + numClassTimes) % numClassTimes;
+      selections.classTime = classTimes[classTimeIndex];
       break;
     case DAY_OF_WEEK:
       weekDayIndex = (weekDayIndex + delta + numWeekDays) % numWeekDays;
+      selections.weekDay = weekDays[weekDayIndex];
       break;
   }
 }
@@ -124,4 +136,16 @@ void updateScreen() {
       tft.drawCentreString(weekDays[weekDayIndex], tft.width()/2, 70, 2);
       break;
   }
+  
+  // Print selections to serial monitor
+  Serial.println("Current Selections:");
+  Serial.print("Class Type: ");
+  Serial.println(selections.classType);
+  Serial.print("Student Number: ");
+  Serial.println(selections.studentNumber);
+  Serial.print("Class Time: ");
+  Serial.println(selections.classTime);
+  Serial.print("Day of Week: ");
+  Serial.println(selections.weekDay);
+  Serial.println("==========================");
 }
