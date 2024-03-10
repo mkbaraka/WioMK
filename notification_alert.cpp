@@ -12,7 +12,7 @@ void NotificationAlert::activate()
     // Activate notification if is not activated and delay time is passed if it is not first notification
     if (!activated)
     {
-        if (last_notification == 0 || (last_notification > 0 && millis() - last_notification < delay_time))
+        if (last_notification == 0 || (last_notification > 0 && millis() - last_notification > delay_time))
         activated = true;
         activation_time = millis();
         last_notification = millis();

@@ -53,7 +53,7 @@ int letture[WINDOW_SIZE] = {0};
 
 bool first =false;
 
-float t=0;
+float t=20;
 float concentration=0;
 float h=0;
 int light = 0;
@@ -80,14 +80,14 @@ NotificationAlert airtAlert(5, 10*60, "Bad air quality detected");
 float min_concentration = 0;
 
 #define N_NOTIFICATIONS 7
-NotificationAlert notifications[N_NOTIFICATIONS] = {
-  pauseRecomendation,
-  blockRecomendation,
-  lowTemperaturetAlert,
-  highTemperaturetAlert,
-  lightAlert,
-  humiditytAlert,
-  airtAlert
+NotificationAlert* notifications[N_NOTIFICATIONS] = {
+  &pauseRecomendation,
+  &blockRecomendation,
+  &lowTemperaturetAlert,
+  &highTemperaturetAlert,
+  &lightAlert,
+  &humiditytAlert,
+  &airtAlert
 };
 
 Tracker tracker;
@@ -108,6 +108,7 @@ void setup() {
   pinMode(WIO_5S_LEFT, INPUT_PULLUP);
   pinMode(WIO_5S_RIGHT, INPUT_PULLUP);
   pinMode(WIO_5S_PRESS, INPUT_PULLUP);
+  pinMode(WIO_BUZZER, OUTPUT);
   Wire.begin();
   TSL2561.init();
   scd30.initialize();
@@ -157,9 +158,6 @@ void setup() {
   ADC1->SWTRIG.bit.START = 1;                                                 // Initiate a software trigger to start an ADC conversion
   while (ADC1->SYNCBUSY.bit.SWTRIG);                                          // Wait for synchronization
   DMAC->Channel[1].CHCTRLA.bit.ENABLE = 1;                                    // Enable DMAC ADC on channel 1
-  SERIAL.println("finished setup"); 
-  SERIAL.print("Current state ");
-  SERIAL.println(current_state);
 }
 
 void loop() {
@@ -169,7 +167,10 @@ void loop() {
     delay(500);
     SERIAL.println("button A pressed");
     SERIAL.println(pressed);
-    current_state = noise;
+    if (current_state == noise)
+      current_state = show_data;
+    else
+      current_state = noise;
     SERIAL.print("Current state noise ");
     SERIAL.println(current_state);
     if (pressed == true)
@@ -187,9 +188,10 @@ void loop() {
   else if (digitalRead(WIO_KEY_B) == LOW)
   {
     delay(500);
+    SERIAL.println(classAssistant.get_class_is_running());
     SERIAL.println("Button B pressed");
     // Show start - puase - stop menu
-    if (!class_started)
+    if (!classAssistant.get_class_has_started())
     {
       current_state = start_class;
       SERIAL.print("Current state start class ");
@@ -199,13 +201,13 @@ void loop() {
     {
       if (digitalRead(WIO_KEY_B) == LOW)
       {
-        delay(100);
+        delay(200);
         SERIAL.println("class ended");
         int rate = end_class_menu();
         SERIAL.println("Finish end class menu");
         if (rate > -1)
         {
-          class_started = false;
+          classAssistant.end_class();
           classAssistant.rate_class(rate);
           SERIAL.println("Class rated");
         }
@@ -223,7 +225,7 @@ void loop() {
     }
   }
 
-  else if (class_started && digitalRead(WIO_KEY_C) == LOW)
+  else if (classAssistant.get_class_is_running() && digitalRead(WIO_KEY_C) == LOW)
   {
     delay(200);
     SERIAL.println("Button C is pressed");
@@ -241,44 +243,45 @@ void loop() {
 
   //Check normal class conditions
   // Check break recomendation
-  if (classAssistant.check_current_time_in_a_row())
-  {
-    SERIAL.println("Break recommended");
-    pauseRecomendation.activate();
-  }
+  // if (classAssistant.check_current_time_in_a_row())
+  // {
+  //   SERIAL.println("Break recommended");
+  //   pauseRecomendation.activate();
+  // }
   // Check block duration
-  if (classAssistant.check_current_block_time())
+  if (classAssistant.check_current_block_time() && notifications[1]->get_activation())
   {
     SERIAL.println("Change block recommended");
-    blockRecomendation.activate();
+    notifications[1]->activate();
   }
   // Check temperature level
-  if (t < min_t)
+  if (t < min_t && !notifications[2]->get_activation())
   {
     SERIAL.println("Low temperature");
-    lowTemperaturetAlert.activate();
+    notifications[2]->activate();
   }
-  else if (t > max_t)
+  else if (t > max_t && !notifications[3]->get_activation())
   {
     SERIAL.println("High temperature");
-    highTemperaturetAlert.activate();
+    notifications[3]->activate();
   }
-  // Check humidity level
-  if (h > min_h)
-  {
-    SERIAL.println("High humidity level");
-    humiditytAlert.activate();
-  }
-  // Check air quality level
-  if (concentration > min_concentration)
-  {
-    SERIAL.println("Bad air quality");
-    airtAlert.activate();
-  }
-  if (light < min_light)
+  // Check light level
+  if (light < min_light && !notifications[4]->get_activation())
   {
     SERIAL.println("Low light");
-    lightAlert.activate();
+    notifications[4]->activate();
+  }
+  // Check humidity level
+  if (h > min_h && !notifications[5]->get_activation())
+  {
+    SERIAL.println("High humidity level");
+    notifications[5]->activate();
+  }
+  // Check air quality level
+  if (concentration > min_concentration && !notifications[6]->get_activation())
+  {
+    SERIAL.println("Bad air quality");
+    notifications[6]->activate();
   }
 
 
@@ -286,11 +289,9 @@ void loop() {
   {
   // Read sensor measures and show in screen
   case show_data:
-    SERIAL.println("Current state is show data");
     show_measured_data();
     break;
   case noise:
-    SERIAL.println("Current state is noise");
     if (first == false){
       SERIAL.println("first noise");
       analogMeter(); // Draw analogue meter
@@ -302,22 +303,18 @@ void loop() {
     updateTime = millis(); // Next update time
     break;
   case start_class:
-    SERIAL.println("Current state is start class");
     start_class_menu();
-    SERIAL.println("Start class menu has ended");
     current_state = show_data;
+    classAssistant.start_class();
     class_started = true;
     break;
   case change_block:
-    SERIAL.println("Current state is change block");
     if (change_block_menu(String(classAssistant.get_current_block())))
     {
-      SERIAL.println("Changing class block");
       classAssistant.change_class_block();
     }
     current_state = show_data;
   default:
-    SERIAL.println("No state is readen");
     break;
   }
 
@@ -326,29 +323,28 @@ void loop() {
 
 void show_measured_data()
 {
-  SERIAL.println("Printing measured data");
   float result[3] = {0};
 
   if(scd30.isAvailable())
   {
     scd30.getCarbonDioxideConcentration(result);
-    SERIAL.print("Carbon Dioxide Concentration is: ");
+    // SERIAL.print("Carbon Dioxide Concentration is: ");
     concentration=result[0];
-    SERIAL.print(result[0]);
-    SERIAL.println(" ppm");
-    SERIAL.println(" ");
-    SERIAL.print("Temperature = ");
+    // SERIAL.print(result[0]);
+    // SERIAL.println(" ppm");
+    // SERIAL.println(" ");
+    // SERIAL.print("Temperature = ");
     t = result[1];
-    SERIAL.print(result[1]);
-    SERIAL.println(" ℃");
-    SERIAL.println(" ");
-    SERIAL.print("Humidity = ");
+    // SERIAL.print(result[1]);
+    // SERIAL.println(" ℃");
+    // SERIAL.println(" ");
+    // SERIAL.print("Humidity = ");
     h = result[2];
-    SERIAL.print(result[2]);
-    SERIAL.println(" %");
-    SERIAL.println(" ");
-    SERIAL.println(" ");
-    SERIAL.println(" ");
+    // SERIAL.print(result[2]);
+    // SERIAL.println(" %");
+    // SERIAL.println(" ");
+    // SERIAL.println(" ");
+    // SERIAL.println(" ");
   }
 
   
@@ -368,6 +364,54 @@ void show_measured_data()
   spr.setTextColor(TFT_WHITE); //Setting text color
   spr.setTextSize(3); //Setting text size 
   spr.drawString("Smart Classroom",37,15); //Drawing a text String 
+
+  if (pause_resume_notification)
+  {
+    SERIAL.println("Show pause resume notification");
+    spr.drawRoundRect(tft.width() / 2 - 25 , tft.height() / 2 - 25, 50, 50, TFT_DARKGREY, TFT_WHITE);
+    spr.setTextColor(TFT_WHITE);
+    spr.setTextSize(2);
+    if (classAssistant.get_class_is_running())
+    {
+      spr.drawString("Class is now in session", 10, tft.height() / 2); //Drawing a text String 
+      SERIAL.println("Class is now in session");
+    }
+    else
+    {
+      spr.drawString("Class is now on break", 10, tft.height() / 2); //Drawing a text String 
+      SERIAL.println("Class is now on break");
+    }
+    spr.pushSprite(0,0); //Push to LCD
+    delay(50);
+    return;
+  }
+
+  // Check if any notification should be displayed
+  for (int i = 0; i < N_NOTIFICATIONS; i++)
+  {
+    notifications[i]->check_notification_time();
+    if (notifications[i]->get_activation())
+    {
+      SERIAL.print("Notification ");
+      SERIAL.print(i);
+      SERIAL.println(" is showing");
+      SERIAL.println(notifications[i]->get_text());
+      spr.drawRoundRect(tft.width() / 2 - 25 , tft.height() / 2 - 25, 50, 50, TFT_DARKGREY, TFT_WHITE);
+      spr.setTextColor(TFT_WHITE);
+      spr.setTextSize(2);
+      spr.drawString(notifications[i]->get_text(), 10, tft.height() / 2);
+      analogWrite(WIO_BUZZER, 128);
+      spr.pushSprite(0,0); //Push to LCD
+      delay(50);
+      return;
+    }
+    analogWrite(WIO_BUZZER, 0);
+  }
+
+
+
+
+
 
   //spr.drawFastVLine(165,50,190,TFT_BLUE); //Drawing verticle line
   //spr.drawRoundRect(5, 55, (tft.width() / 2 - 5), (tft.height()/2 -35) , 10, TFT_WHITE); // L1
@@ -466,48 +510,9 @@ void show_measured_data()
   }
   */
 
-  SERIAL.println("Previous show data finished");
-
-  if (pause_resume_notification)
-  {
-    SERIAL.println("Show pause resume notification");
-    spr.drawRoundRect(WINDOW_SIZE / 2 - 25 , WINDOW_SIZE / 2 - 25, 50, 50, TFT_DARKGREY, TFT_WHITE);
-    spr.setTextColor(TFT_WHITE);
-    spr.setTextSize(4);
-    if (classAssistant.get_class_is_running())
-    {
-      spr.drawString("Class is now in session", WINDOW_SIZE / 2, WINDOW_SIZE / 2); //Drawing a text String 
-      SERIAL.println("Class is now in session");
-    }
-    else
-    {
-      spr.drawString("Class is now on break",WINDOW_SIZE / 2, WINDOW_SIZE / 2); //Drawing a text String 
-      SERIAL.println("Class is now on break");
-    }
-  }
-
-  // Check if any notification should be displayed
-  for (int i = 0; i < N_NOTIFICATIONS; i++)
-  {
-    if (notifications[i].get_activation())
-    {
-      SERIAL.print("Notification ");
-      SERIAL.print(i);
-      SERIAL.println(" is showing");
-      spr.drawRoundRect(WINDOW_SIZE / 2 - 25 , WINDOW_SIZE / 2 - 25, 50, 50, TFT_DARKGREY, TFT_WHITE);
-      spr.setTextColor(TFT_WHITE);
-      spr.setTextSize(4);
-      spr.drawString(notifications[i].get_text(), WINDOW_SIZE / 2, WINDOW_SIZE / 2);
-    }
-  }
-
-  SERIAL.println("Finished notification check");
   //Gather tracker data
-
   tracker.gather_data(h, light, concentration, t);
-  SERIAL.println("Data collected");
   spr.pushSprite(0,0); //Push to LCD
-  SERIAL.println("Pushed lcd data");
   delay(50);
 }
 
@@ -516,7 +521,6 @@ void show_measured_data()
 //  Draw the analogue meter on the screen
 // #########################################################################
 void analogMeter() {
-  SERIAL.println("Analog Meter");
   // Meter outline
 
   tft.fillRect(5, 3, 320, 158, TFT_WHITE);
@@ -601,8 +605,6 @@ void analogMeter() {
           tft.drawLine(x0, y0, x1, y1, TFT_BLACK);
       }
   }
-  SERIAL.println("Finished Analog Meter");
-
 }
 
 // #########################################################################
@@ -723,7 +725,6 @@ void plotNeedle()
   // Re-plot text under needle
   tft.setTextColor(TFT_BLACK);
   tft.drawCentreString("dB", 145, 90, 4); // // Comment out to avoid font 4
-  SERIAL.println("Finished plot needle");
 }
 
 

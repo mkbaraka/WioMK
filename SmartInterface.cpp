@@ -30,7 +30,8 @@ int box_cancel[2] = {100, 200};
 
 int punctuation_box[2] = {60, 80};
 int punctuation_box_w = 200;
-int punctuation_box_h = 15;
+int punctuation_box_h = 5;
+int punctuation_gap = 3;
 int color_scale[5] = {TFT_RED, TFT_ORANGE, TFT_YELLOW, TFT_GREENYELLOW, TFT_GREEN};
 
 
@@ -194,7 +195,7 @@ void start_class_menu()
         spr.drawString("confirm", box_confirm[0], box_confirm[1]);
 
         // Draw cancel button
-        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , 10, selected_button == 5 ? TFT_GREEN : TFT_WHITE);
+        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , 10, selected_button == 5 ? TFT_RED : TFT_WHITE);
         spr.drawString("cancel", box_cancel[0], box_cancel[1]);
         spr.pushSprite(0,0);
         SERIAL.println("End start menu lcd display");
@@ -241,7 +242,7 @@ bool change_block_menu(String block)
         spr.fillSprite(TFT_BLACK); //Fill background with white color
         spr.fillRect(0, 0, 320, 320, TFT_DARKGREY); //Rectangle fill with dark green 
         spr.setTextColor(TFT_WHITE); //Setting text color
-        spr.setTextSize(3); //Setting text size 
+        spr.setTextSize(2); //Setting text size 
         spr.drawString(classAssistant.get_current_block(),37,15);
         spr.drawString("block finished?", 37, 50);
         spr.setTextSize(font_size);
@@ -252,7 +253,7 @@ bool change_block_menu(String block)
         spr.drawString("confirm", box_confirm[0], box_confirm[1]);
 
         // Draw cancel button
-        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , 10,  selected_button == 1? TFT_GREEN : TFT_WHITE);
+        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , 10,  selected_button == 1? TFT_RED : TFT_WHITE);
         spr.drawString("cancel", box_cancel[0], box_cancel[1]);
         spr.pushSprite(0,0);
         SERIAL.println("Pushed lcd information");
@@ -274,7 +275,7 @@ int end_class_menu()
         if (selected_button == 0 && (WIO_5S_DOWN) == LOW)
         {
             delay(200);
-            rate = increment_with_check(rate, -1, 0, 10);
+            rate = increment_with_check(rate, -1, 1, 10);
             SERIAL.println("Button down pressed in end class menu");
             SERIAL.print("Current rate ");
             SERIAL.println(selected_button);
@@ -282,7 +283,7 @@ int end_class_menu()
         else if (selected_button == 0 && digitalRead(WIO_5S_UP) == LOW)
         {
             delay(200);
-            rate = increment_with_check(rate, 1, 0, 10);
+            rate = increment_with_check(rate, 1, 1, 10);
             SERIAL.println("Button up pressed in end class menu");
             SERIAL.print("Current rate ");
             SERIAL.println(selected_button);
@@ -322,26 +323,30 @@ int end_class_menu()
         SERIAL.println("Start lcd showing for end class menu");
 
         spr.fillSprite(TFT_BLACK); //Fill background with white color
-        spr.fillRect(0, 0, 320, 50, TFT_PURPLE); //Rectangle fill with dark green 
+        spr.fillRect(0, 0, 320, 60, TFT_PURPLE); //Rectangle fill with dark green 
         spr.setTextColor(TFT_WHITE); //Setting text color
-        spr.setTextSize(4); //Setting text size 
-        spr.drawString(classAssistant.get_current_block() + "End of class. Rate the class between 0-10  ", 37, 15);
+        spr.setTextSize(1); //Setting text size 
+        spr.drawString("End of class.", 37, 15);
+        spr.drawString("Rate the class between 0-10  ", 37, 40);
         spr.setTextSize(font_size); //Setting text size 
 
 
-        for (int i=0; i < 10; i++)
+        for (int i=10; i > 0; i--)
         {
-            
-            spr.drawRoundRect(punctuation_box[0] , punctuation_box[1] + i * punctuation_box_h, punctuation_box_w, punctuation_box_h , rate < i ? color_scale[i/2] : TFT_LIGHTGREY, TFT_WHITE);
-            spr.drawString("confirm", punctuation_box[0], punctuation_box[1]);
+            SERIAL.print(i);
+            spr.drawCircle(punctuation_box[0], punctuation_box[1] + (10 - i) * (2 *punctuation_box_h + punctuation_gap), punctuation_box_h, i <= rate ? color_scale[i/2] : TFT_WHITE);
+            spr.fillCircle(punctuation_box[0], punctuation_box[1] + (10 - i) * (2 *punctuation_box_h + punctuation_gap), punctuation_box_h, i <= rate ? color_scale[i/2] : TFT_WHITE);
+            // spr.drawRoundRect(punctuation_box[0] , punctuation_box[1] + i * punctuation_box_h, punctuation_box_w, punctuation_box_h , rate < i ? color_scale[i/2] : TFT_LIGHTGREY, TFT_WHITE);
+            // spr.drawRoundRect(punctuation_box[0] , punctuation_box[1] + (10 - i) * (punctuation_box_h + punctuation_gap), punctuation_box_w, punctuation_box_h , 10, i <= rate ? color_scale[i/2] : TFT_WHITE);
         }
+        SERIAL.println("Finish punctuation boxs");
 
         //Draw confirm button
-        spr.drawRoundRect(box_confirm[0] , box_confirm[1], select_button_w, select_button_h , selected_button == 1 ? TFT_GREEN : 10, TFT_WHITE);
+        spr.drawRoundRect(box_confirm[0] , box_confirm[1], select_button_w, select_button_h , 10, selected_button == 1 ? TFT_GREEN : TFT_WHITE);
         spr.drawString("confirm", box_confirm[0], box_confirm[1]);
 
         // Draw cancel button
-        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , selected_button == 2 ? TFT_GREEN : 10, TFT_WHITE);
+        spr.drawRoundRect(box_cancel[0] , box_cancel[1], select_button_w, select_button_h , 10, selected_button == 2 ? TFT_RED : TFT_WHITE);
         spr.drawString("cancel", box_cancel[0], box_cancel[1]);
         
         spr.pushSprite(0,0);
@@ -349,7 +354,7 @@ int end_class_menu()
         delay(50);
     }
 
-    return rate;
+    return rate + 1;
 }
 
 

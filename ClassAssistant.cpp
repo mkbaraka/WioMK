@@ -63,6 +63,7 @@ void ClassAssistant::start_class()
 {
     last_check = millis();
     class_is_running = true;
+    class_has_started = true;
 }
 
 void ClassAssistant::change_class_state()
@@ -71,11 +72,13 @@ void ClassAssistant::change_class_state()
         total_class_time += millis() - last_check;
         current_class_block_time += millis() - last_check;
         breaks += 1;
+        class_is_running = false;
     }
-    else{
+    else
+    {
         break_time += millis() - last_check;
+        class_is_running = true;
     }
-    class_is_running != class_is_running;
     last_check = millis();
 }
 
@@ -83,6 +86,7 @@ void ClassAssistant::end_class()
 {
     total_class_time += millis() - last_check;
     class_is_running = false;
+    class_has_started = false;
 }
 
 void ClassAssistant::rate_class(int punctuation)
@@ -105,7 +109,7 @@ void ClassAssistant::change_class_block()
 */
 bool ClassAssistant::check_current_time_in_a_row()
 {
-    return millis() - last_check < max_time_in_a_row;
+    return millis() - last_check > max_time_in_a_row;
 }
 
 /*
@@ -141,6 +145,11 @@ String ClassAssistant::get_current_block()
 bool ClassAssistant::get_class_is_running()
 {
     return class_is_running;
+}
+
+bool ClassAssistant::get_class_has_started()
+{
+    return class_has_started;
 }
 
 // void ClassAssistant::write_class_data()

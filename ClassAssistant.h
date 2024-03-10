@@ -83,6 +83,7 @@ class ClassAssistant
 
         String get_current_block();
         bool get_class_is_running();
+        bool get_class_has_started();
 
         void write_class_data();
 
@@ -105,6 +106,7 @@ class ClassAssistant
         unsigned long total_class_time = 0;
         unsigned long break_time = 0;
         bool class_is_running = false;
+        bool class_has_started = false;
         unsigned long extra_time_to_notify = 0;
         unsigned long max_time_in_a_row = 0;
 
