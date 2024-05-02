@@ -94,7 +94,7 @@ Tracker tracker;
 
 void setup() {
   SERIAL.begin(9600); //Start SERIAL communication
-
+  pinMode(WIO_MIC, INPUT);
   tft.begin(); //Start TFT LCD
   tft.setRotation(3); //Set TFT LCD rotation
   spr.createSprite(TFT_HEIGHT,TFT_WIDTH); //Create buffer
