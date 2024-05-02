@@ -1,0 +1,10 @@
+apiVersion: 1
+datasources:
+  - name: MQTT
+    type: MQTT
+    access: proxy
+    orgId: 1  # Assuming orgId 1 is correct for your setup
+    url: tcp://mosquitto:1883
+    jsonData:
+      topic: "ping"
+    isDefault: true

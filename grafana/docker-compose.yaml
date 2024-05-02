@@ -1,0 +1,27 @@
+version: "3.0"
+services:
+  mosquitto:
+    image: eclipse-mosquitto
+    ports:
+      - "9001:9001"
+      - "1883:1883"
+    volumes:
+      - ./volumes/mosquitto.conf:/mosquitto/config/mosquitto.conf
+    restart: unless-stopped
+  grafana:
+    depends_on: 
+      - mosquitto
+    image: grafana/grafana-enterprise
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      # - GF_INSTALL_PLUGINS=https://github.com/svet-b/grafana-mqtt-datasource/archive/refs/heads/built.zip;ammpio-mqtt-datasource
+      - GF_INSTALL_PLUGINS=grafana-mqtt-datasource
+      - GF_PLUGINS_ALLOW_LOADING_UNSIGNED_PLUGINS=grafana-mqtt-datasource
+    volumes:
+      - ./volumes/dashboard.yaml:/etc/grafana/provisioning/dashboards/main.yaml
+      - ./volumes/dashboards:/var/lib/grafana/dashboards
+      - ./volumes/provisioning/datasource.yaml:/usr/share/grafana/conf/provisioning/datasources/datasource.yaml
+      - ./volumes/grafana.db:/var/lib/grafana/grafana.db
+    restart: unless-stopped
