@@ -203,7 +203,7 @@ bool ClassAssistant::get_class_has_started()
      now = rtc.now();
      String nameFile = "class_data.csv";
 
-     String data_txt = class_type + ","
+     String data_txt = "," + class_type + ","
              + String(students) + ","
              + time_type + ","
              + day_type+ ","
