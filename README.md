@@ -15,6 +15,7 @@ El dispositivo utiliza las siguientes tecnologías para la conectividad y análi
 - **MQTT**: Protocolo de comunicación para IoT.
 - **Mosquitto**: Broker MQTT que gestiona la comunicación entre dispositivos.
 - **Grafana**: Plataforma de visualización de datos.
+- **Matplotlib y Pandas**: Bibliotecas de Python para la visualización y análisis de datos desde archivos CSV mediante un Script.
 
 ### Instalación del Contenedor de Docker para Grafana
 1. Clona el repositorio:
